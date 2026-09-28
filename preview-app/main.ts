@@ -14,7 +14,7 @@ import {
   type Look,
   type Outfit,
   type ShirtPattern,
-} from "../src";
+} from "../src/index.js";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const root = $("root");

@@ -1,6 +1,6 @@
-import { hexToRgb, hslToRgb, mix, ramp, rgbToHsl, type RGB } from "./color";
-import type { Look } from "./look";
-import type { Material } from "./raster";
+import { hexToRgb, hslToRgb, mix, ramp, rgbToHsl, type RGB } from "./color.js";
+import type { Look } from "./look.js";
+import type { Material } from "./raster.js";
 
 /** Body material slots. Held items append their own after BODY_SLOTS. */
 export const M = {

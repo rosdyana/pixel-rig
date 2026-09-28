@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ANIMS, DEFAULT_LOOK, racket, randomLook, renderAnims, type HeldItem, type Look } from "../src";
+import { ANIMS, DEFAULT_LOOK, racket, randomLook, renderAnims, type HeldItem, type Look } from "../src/index.js";
 
 function mulberry32(seed: number) {
   let a = seed >>> 0;

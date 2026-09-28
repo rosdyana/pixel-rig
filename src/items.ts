@@ -1,7 +1,7 @@
-import { add, dir } from "./character";
-import { ramp } from "./color";
-import type { Look } from "./look";
-import type { Material, PixelBuffer, Vec } from "./raster";
+import { add, dir } from "./character.js";
+import { ramp } from "./color.js";
+import type { Look } from "./look.js";
+import type { Material, PixelBuffer, Vec } from "./raster.js";
 
 export interface ItemContext {
   buf: PixelBuffer;

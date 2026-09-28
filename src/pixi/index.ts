@@ -1,10 +1,10 @@
 // Optional PixiJS v8 adapter: `import { bakeCharacter } from "@taipeistudio/pixel-rig/pixi"`.
 import { Texture } from "pixi.js";
-import { toCanvas, type Pixels } from "../canvas";
-import { DEFAULT_FRAME, renderAnims, type Frame, type RenderOptions } from "../character";
-import type { Look } from "../look";
-import type { Anim } from "../pose";
-import type { PropSprite } from "../props";
+import { toCanvas, type Pixels } from "../canvas.js";
+import { DEFAULT_FRAME, renderAnims, type Frame, type RenderOptions } from "../character.js";
+import type { Look } from "../look.js";
+import type { Anim } from "../pose.js";
+import type { PropSprite } from "../props.js";
 
 export function toTexture(p: Pixels): Texture {
   const tex = Texture.from(toCanvas(p));

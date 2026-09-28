@@ -16,7 +16,7 @@ import {
   solid,
   sword,
   type HeldItem,
-} from "../src";
+} from "../src/index.js";
 
 function mulberry32(seed: number) {
   let a = seed >>> 0;

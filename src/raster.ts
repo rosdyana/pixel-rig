@@ -1,4 +1,4 @@
-import { mix, type RGB } from "./color";
+import { mix, type RGB } from "./color.js";
 
 export interface Material {
   ramp: RGB[];

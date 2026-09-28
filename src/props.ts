@@ -1,4 +1,4 @@
-import { PixelBuffer, quantize, type Material, type Painter, type Vec } from "./raster";
+import { PixelBuffer, quantize, type Material, type Painter, type Vec } from "./raster.js";
 
 export interface PropSprite {
   pixels: Uint8ClampedArray;

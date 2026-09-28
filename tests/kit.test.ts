@@ -14,7 +14,7 @@ import {
   type HeldItem,
   type Look,
   type Outfit,
-} from "../src";
+} from "../src/index.js";
 
 const { width: W, height: H, groundY } = DEFAULT_FRAME;
 const alpha = (px: Uint8ClampedArray, x: number, y: number) => px[(y * W + x) * 4 + 3];

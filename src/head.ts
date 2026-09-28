@@ -1,7 +1,7 @@
-import type { HairStyle, Look } from "./look";
-import { M } from "./palette";
-import type { Pose } from "./pose";
-import { lambert, quantize, type PixelBuffer, type Vec } from "./raster";
+import type { HairStyle, Look } from "./look.js";
+import { M } from "./palette.js";
+import type { Pose } from "./pose.js";
+import { lambert, quantize, type PixelBuffer, type Vec } from "./raster.js";
 
 const PART_HEAD = 5;
 const D_HEAD = 5;

@@ -1,9 +1,9 @@
-import { drawHead } from "./head";
-import type { Look, ShirtPattern } from "./look";
-import { BODY_SLOTS, bodyMaterials, M } from "./palette";
-import { framePoses, type Anim, type Pose } from "./pose";
-import { PixelBuffer, quantize, type Painter, type Vec } from "./raster";
-import type { HeldItem } from "./items";
+import { drawHead } from "./head.js";
+import type { Look, ShirtPattern } from "./look.js";
+import { BODY_SLOTS, bodyMaterials, M } from "./palette.js";
+import { framePoses, type Anim, type Pose } from "./pose.js";
+import { PixelBuffer, quantize, type Painter, type Vec } from "./raster.js";
+import type { HeldItem } from "./items.js";
 
 /** Canvas size and where the feet land inside it. */
 export interface FrameSpec {
