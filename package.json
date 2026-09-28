@@ -1,0 +1,74 @@
+{
+  "name": "@taipeistudio/pixel-rig",
+  "version": "0.2.0",
+  "description": "Procedural, animated pixel-art characters from a pose rig. Deterministic, no image assets.",
+  "keywords": [
+    "pixel-art",
+    "sprites",
+    "procedural",
+    "character-generator",
+    "animation",
+    "gamedev",
+    "canvas",
+    "pixijs",
+    "typescript"
+  ],
+  "author": {
+    "name": "Rosdyana Kusuma",
+    "email": "rosdyana.kusuma@gmail.com",
+    "url": "https://github.com/rosdyana"
+  },
+  "license": "SEE LICENSE IN LICENSE",
+  "homepage": "https://github.com/rosdyana/pixel-rig#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rosdyana/pixel-rig.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rosdyana/pixel-rig/issues"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./pixi": {
+      "types": "./dist/pixi/index.d.ts",
+      "import": "./dist/pixi/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepare": "npm run build",
+    "dev": "vite preview-app --port 5180",
+    "test": "vitest run",
+    "check": "tsc --noEmit && vitest run"
+  },
+  "peerDependencies": {
+    "pixi.js": "^8.0.0"
+  },
+  "peerDependenciesMeta": {
+    "pixi.js": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "pixi.js": "^8.8.1",
+    "typescript": "~5.7.3",
+    "vite": "^6.2.0",
+    "vitest": "^3.2.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

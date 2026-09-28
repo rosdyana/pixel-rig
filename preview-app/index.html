@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>pixel-rig preview</title>
+  <style>
+    body { margin: 0; padding: 20px; background: #2a2944; color: #eee; font: 13px monospace; }
+    h2 { font-size: 13px; color: #ffd23f; margin: 22px 0 8px; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+    canvas { image-rendering: pixelated; background: #3a3960; }
+    figure { margin: 0; text-align: center; } figcaption { font-size: 11px; color: #aaa; }
+    label { margin-right: 14px; } select, input, button { font: inherit; }
+  </style>
+</head>
+<body>
+  <div>
+    <label>Seed <input id="seed" type="number" value="3" style="width:5em"></label>
+    <label>Item <select id="item"><option>racket</option><option>sword</option><option>none</option></select></label>
+    <label>Zoom <select id="zoom"><option>2</option><option selected>3</option><option>4</option></select></label>
+    <button id="png">Export idle sheet PNG</button>
+  </div>
+  <div style="margin-top:8px">
+    <label><input id="kit" type="checkbox"> Kit</label>
+    <label>Top <input id="top" type="color" value="#2d7be0"></label>
+    <label>Pattern <select id="pattern"></select></label>
+    <label>Colour <input id="patternColor" type="color" value="#f4f1ea"></label>
+    <label>Socks <input id="socks" type="color" value="#2d7be0"></label>
+    <label><input id="highSocks" type="checkbox" checked> High socks</label>
+    <label>Sleeves <select id="sleeves"><option>short</option><option>long</option></select></label>
+    <label><input id="gloves" type="checkbox"> Gloves <input id="gloveColor" type="color" value="#34c46a"></label>
+  </div>
+  <div id="root"></div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
