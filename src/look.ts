@@ -4,7 +4,8 @@ export type Stature = "short" | "average" | "tall";
 export type HairStyle = "buzz" | "crop" | "spiky" | "bob" | "ponytail" | "bun" | "curly";
 export type EyeStyle = "normal" | "narrow" | "round";
 export type FacialHair = "none" | "stubble" | "mustache";
-export type BottomStyle = "shorts" | "skort";
+/** `long`: knee-length basketball shorts. */
+export type BottomStyle = "shorts" | "skort" | "long";
 
 /** Clothing colours (hex). */
 export interface Outfit {
@@ -21,10 +22,16 @@ export interface Outfit {
   /** Sock colour (default: the current off-white sock) and knee-high football socks. */
   socks?: string;
   highSocks?: boolean;
-  /** Long sleeves reach the wrist (goalkeepers, winter kits). */
-  sleeves?: "short" | "long";
+  /** Sock length; `knee` is the same as `highSocks`, `crew` reaches mid-calf (default `ankle`). */
+  sockHeight?: "ankle" | "crew" | "knee";
+  /** Long sleeves reach the wrist (goalkeepers, winter kits); `none` is a sleeveless jersey or vest. */
+  sleeves?: "short" | "long" | "none";
+  /** Compression sleeve on the item arm, shoulder to wrist, in the accent colour. */
+  armSleeve?: boolean;
   /** Goalkeeper gloves on both hands in this colour (slightly bigger hands). */
   gloves?: string;
+  /** Bare feet: no socks or shoes, skin down to the toes (`shoes`/`socks` are ignored). */
+  barefoot?: boolean;
 }
 
 export type ShirtPattern = NonNullable<Outfit["pattern"]>;
@@ -48,6 +55,11 @@ export interface Look {
   outfit: Outfit;
   /** Main colour of the held item (racket frame, sword grip, …). */
   itemColor: string;
+  /**
+   * Limb and torso length scale; overrides `stature` (short 0.93, average 1, tall 1.07).
+   * For very tall or growing characters, e.g. 1.15 for a 2.10 m centre. Use a taller frame.
+   */
+  height?: number;
 }
 
 export const SKIN_TONES = ["#f6d2b4", "#eab98f", "#d69a6b", "#b8764a", "#8e5433", "#5e3620"];

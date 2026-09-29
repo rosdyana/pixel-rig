@@ -53,7 +53,7 @@ interface Dims {
 
 function dims(ap: Look): Dims {
   const f = ap.gender === "female";
-  const hs = { short: 0.93, average: 1, tall: 1.07 }[ap.stature];
+  const hs = ap.height ?? { short: 0.93, average: 1, tall: 1.07 }[ap.stature];
   const bw = { slim: -0.35, athletic: 0, stocky: 0.55 }[ap.build];
   return {
     thigh: (f ? 12.6 : 13.2) * hs,
@@ -188,29 +188,42 @@ export function renderPose(look: Look, pose: Pose, opts: RenderOptions = {}): Fr
 }
 
 function drawLeg(buf: PixelBuffer, d: Dims, leg: Rig["legN"], depth: number, part: number, adj: number, ap: Look) {
-  const skort = (ap.outfit.bottomStyle ?? (ap.gender === "female" ? "skort" : "shorts")) === "skort";
-  // Ankle socks, or knee-high football socks reaching just below the knee.
-  const high = !!ap.outfit.highSocks;
-  const sockTop = high ? 0.12 : 0.74;
+  const bottom = ap.outfit.bottomStyle ?? (ap.gender === "female" ? "skort" : "shorts");
+  const skort = bottom === "skort";
+  const long = bottom === "long";
+  // Ankle socks, crew socks to mid-calf, or knee-high football socks reaching just below the knee.
+  const bare = !!ap.outfit.barefoot;
+  const height = ap.outfit.sockHeight ?? (ap.outfit.highSocks ? "knee" : "ankle");
+  const high = !bare && height === "knee";
+  const crew = !bare && height === "crew";
+  const sockTop = bare ? 2 : high ? 0.12 : crew ? 0.45 : 0.74;
   buf.capsule(leg.hip, leg.knee, d.rThigh[0], d.rThigh[1], depth, part, ({ shade }) => ({
     mat: M.skin,
     tone: quantize(shade) + adj,
   }));
   buf.capsule(leg.knee, leg.ankle, d.rShin[0], d.rShin[1], depth, part, ({ shade, t }) => {
     if (t > sockTop) {
-      const stripe = high ? t > 0.14 && t < 0.21 : t > 0.76 && t < 0.83;
+      const stripe = high ? t > 0.14 && t < 0.21 : crew ? t > 0.47 && t < 0.54 : t > 0.76 && t < 0.83;
       return { mat: stripe ? M.accent : M.sock, tone: quantize(shade) + adj };
     }
     return { mat: M.skin, tone: quantize(shade) + adj };
   });
-  // Shorts (or a slightly flared skort) over the upper thigh.
-  const len = skort ? 0.42 : 0.5;
+  // Shorts (a slightly flared skort, or baggy knee-length basketball shorts) over the thigh.
+  const len = skort ? 0.42 : long ? 0.9 : 0.5;
   const end = add(leg.hip, { x: leg.knee.x - leg.hip.x, y: leg.knee.y - leg.hip.y }, len);
-  const flare = skort ? 1.0 : 0.45;
+  const flare = skort ? 1.0 : long ? 0.8 : 0.45;
   buf.capsule(leg.hip, end, d.rThigh[0] + 0.5, d.rThigh[0] + flare, depth + 0.05, part, ({ shade, t }) => ({
     mat: M.bottom,
     tone: quantize(shade) + adj - (t > 0.86 ? 1 : 0),
   }));
+  if (bare) {
+    // A bare foot: a slimmer skin capsule, heel slightly darker.
+    buf.capsule(leg.heel, leg.toe, SHOE_R - 0.35, SHOE_R - 0.55, depth + 0.1, part, ({ shade, t }) => ({
+      mat: M.skin,
+      tone: quantize(shade) + adj - (t < 0.12 ? 1 : 0),
+    }));
+    return;
+  }
   // Shoe: rounded, with sole and an accent swoosh.
   buf.capsule(leg.heel, leg.toe, SHOE_R, SHOE_R - 0.15, depth + 0.1, part, ({ shade, s, t }) => {
     if (s > 0.42) return { mat: M.sole, tone: 2 + adj };
@@ -293,8 +306,11 @@ function drawArm(
   const part = depth > 3 ? PART.nearArm : PART.farArm;
   const o = ap.outfit;
   const long = o.sleeves === "long";
+  const bare = o.sleeves === "none";
   const wristband = itemArm && ap.headband;
-  const skinP: Painter = ({ shade }) => ({ mat: M.skin, tone: quantize(shade) + adj });
+  // A compression sleeve covers the item arm (under any shirt sleeve).
+  const comp = itemArm && !!o.armSleeve && !long;
+  const skinP: Painter = ({ shade }) => ({ mat: comp ? M.accent : M.skin, tone: quantize(shade) + adj });
   const topP: Painter = ({ shade }) => ({ mat: M.top, tone: quantize(shade) + adj });
   buf.capsule(shoulder, arm.elbow, d.rUpper[0], d.rUpper[1], depth, part, long ? topP : skinP);
   buf.capsule(arm.elbow, arm.wrist, d.rFore[0], d.rFore[1], depth, part, ({ shade, t }) => {
@@ -304,14 +320,24 @@ function drawArm(
       return { mat: M.top, tone: quantize(shade) + adj };
     }
     if (wristband && t > 0.78) return { mat: M.accent, tone: quantize(shade) + adj };
+    if (comp && t < 0.88) return { mat: M.accent, tone: quantize(shade) + adj - (t > 0.82 ? 1 : 0) };
     return { mat: M.skin, tone: quantize(shade) + adj };
   });
-  // Short sleeve with trim cuff (a plain shoulder over a long sleeve).
-  const sleeveEnd = add(shoulder, { x: arm.elbow.x - shoulder.x, y: arm.elbow.y - shoulder.y }, 0.46);
-  buf.capsule(shoulder, sleeveEnd, d.rUpper[0] + 0.9, d.rUpper[0] + 0.6, depth + 0.05, part, ({ shade, t }) => ({
-    mat: t > 0.78 && !long ? M.trim : M.top,
-    tone: quantize(shade) + adj,
-  }));
+  if (bare) {
+    // Sleeveless: only a trim-edged armhole cap over the shoulder joint.
+    const capEnd = add(shoulder, { x: arm.elbow.x - shoulder.x, y: arm.elbow.y - shoulder.y }, 0.14);
+    buf.capsule(shoulder, capEnd, d.rUpper[0] + 0.5, d.rUpper[0] + 0.2, depth + 0.05, part, ({ shade, t }) => ({
+      mat: t > 0.55 ? M.trim : M.top,
+      tone: quantize(shade) + adj,
+    }));
+  } else {
+    // Short sleeve with trim cuff (a plain shoulder over a long sleeve).
+    const sleeveEnd = add(shoulder, { x: arm.elbow.x - shoulder.x, y: arm.elbow.y - shoulder.y }, 0.46);
+    buf.capsule(shoulder, sleeveEnd, d.rUpper[0] + 0.9, d.rUpper[0] + 0.6, depth + 0.05, part, ({ shade, t }) => ({
+      mat: t > 0.78 && !long ? M.trim : M.top,
+      tone: quantize(shade) + adj,
+    }));
+  }
   if (o.gloves) {
     // Padded goalkeeper glove: a bigger disc with a darker cuff side.
     const back = { x: arm.wrist.x - arm.hand.x, y: arm.wrist.y - arm.hand.y };

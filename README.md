@@ -40,6 +40,7 @@ always produces the same pixels.
 - **Consistent shading**: 5-tone hue-shifted colour ramps, lambert shading, crease shadows and selective outlines
 - **Configurable humanoid rig**: gender, build, stature, skin, 7 hair styles, eyes, facial hair, handedness, headband and outfit colours (top, trim, bottom, shoes, accent, shorts/skort)
 - **Football kits**: shirt patterns (stripes, hoops, halves, sash), sock colours, knee-high socks, long sleeves and goalkeeper gloves
+- **Basketball kits**: sleeveless jerseys, knee-length shorts, crew socks, a shooting sleeve, and a free `height` scale for very tall players
 - **Pose system**: pose blending and animations, with a generic set included (idle, run, jump, lunge, dive, cheer, slump)
 - **Pluggable held items**: `racket()` and `sword()` included, or write your own
 - **Props**: pre-rendered rotations for small sprites such as projectiles, balls and shuttlecocks
@@ -101,7 +102,7 @@ hero.play();
 | **Frame** | RGBA pixels plus anchors: `origin` (feet), `hand`, and `item` (the point a held item returns, e.g. a racket head). Use these to line up hits, muzzle flashes or pick-ups. |
 | **HeldItem** | An object that declares its materials and draws itself at the hand. |
 
-## Football kits
+## Sports kits
 
 Kit fields are optional properties of `Outfit`. When omitted, a look renders exactly as it
 did before kits were introduced (0.1).
@@ -111,9 +112,13 @@ did before kits were introduced (0.1).
 | `pattern` | `"plain"` (default), `"stripes"`, `"hoops"`, `"halves"`, `"sash"` | Painted on the torso; collar and side seam stay in `trim` |
 | `patternColor` | hex (default: `trim`) | Colour of the stripes, hoops, front half or sash |
 | `socks` | hex (default: off-white) | Sock colour; the stripe near the sock top stays `accent` |
-| `highSocks` | boolean | Knee-high football socks |
-| `sleeves` | `"short"` (default), `"long"` | Long sleeves in `top` with a `trim` cuff at the wrist |
+| `highSocks` | boolean | Knee-high football socks (same as `sockHeight: "knee"`) |
+| `sockHeight` | `"ankle"` (default), `"crew"`, `"knee"` | Sock length; crew socks reach mid-calf |
+| `sleeves` | `"short"` (default), `"long"`, `"none"` | Long sleeves in `top` with a `trim` cuff at the wrist; `none` is a sleeveless jersey with a trimmed armhole |
+| `bottomStyle` | `"shorts"`, `"skort"`, `"long"` | `long`: baggy knee-length basketball shorts |
+| `armSleeve` | boolean | Compression sleeve on the item arm, in `accent` |
 | `gloves` | hex | Goalkeeper gloves on both hands (slightly larger hands) |
+| `barefoot` | boolean | Bare feet: skin to the toes, `shoes` and `socks` ignored |
 
 ```ts
 import { DEFAULT_LOOK, type Look } from "@taipeistudio/pixel-rig";
@@ -130,6 +135,19 @@ const striker: Look = {
 const keeper: Look = {
   ...striker,
   outfit: { ...striker.outfit, top: "#f2c230", pattern: "plain", sleeves: "long", gloves: "#34c46a" },
+};
+```
+
+`Look.height` (optional number) scales limbs and torso and overrides `stature` (short 0.93,
+average 1, tall 1.07). Above about 1.07, jumping poses need a taller frame than
+`DEFAULT_FRAME`, e.g. `{ width: 112, height: 128, groundY: 124, originX: 56 }`.
+
+```ts
+const centre: Look = {
+  ...DEFAULT_LOOK,
+  height: 1.12,
+  build: "slim",
+  outfit: { ...DEFAULT_LOOK.outfit, sleeves: "none", bottomStyle: "long", sockHeight: "crew", armSleeve: true },
 };
 ```
 
