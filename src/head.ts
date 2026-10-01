@@ -156,6 +156,9 @@ function hairTone(
   x: number,
   y: number,
 ): number {
+  // Hair texture is a per-pixel pattern: keep it on the unscaled grid.
+  x = Math.floor(x);
+  y = Math.floor(y);
   let t = quantize(shade - 0.12);
   if (shape.texture === "strand" && (x + (y >> 1)) % 3 === 0 && t >= 2) t--;
   if (shape.texture === "curl") t += (hash(x, y) % 3) - 1;

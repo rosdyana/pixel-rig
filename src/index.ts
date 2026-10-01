@@ -17,5 +17,7 @@ export {
   type RenderOptions,
 } from "./character.js";
 export * from "./items.js";
+export * from "./rear.js";
+export * from "./upright.js";
 export * from "./props.js";
 export * from "./canvas.js";

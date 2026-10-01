@@ -1,18 +1,31 @@
 import {
   ANIMS,
+  BIKE_KINDS,
   DEFAULT_FRAME,
   framePoses,
+  mirrorRider,
   racket,
   randomLook,
+  REAR_FRAME,
   renderAnim,
   renderPose,
+  renderRider,
+  renderWalker,
+  RIDER_ANIMS,
+  riderFramePoses,
+  riderPose,
+  runCycle,
   SHIRT_PATTERNS,
+  STAND_POSE,
   sword,
   toScaledCanvas,
   toSheet,
+  type Bike,
   type HeldItem,
   type Look,
   type Outfit,
+  type Rider,
+  type RiderPose,
   type ShirtPattern,
 } from "../src/index.js";
 
@@ -103,6 +116,44 @@ function draw() {
     timers.push(window.setInterval(() => holder.replaceChildren(frames[(i = (i + 1) % frames.length)]), 1000 / a.fps));
     fig(play, holder, `${name} (${framePoses(a).length}f)`);
   }
+
+  const rear = section("Rear view (bikes)");
+  const rider: Rider = { look: { ...cast[0], outfit: { ...cast[0].outfit, sleeves: "long" } }, patch: true };
+  const rearCrop: [number, number, number, number] = [24, 22, REAR_FRAME.width - 48, REAR_FRAME.height - 24];
+  BIKE_KINDS.forEach((kind, i) => {
+    const bike: Bike = { kind, body: ["#d8262f", "#2d7be0", "#1d1d26", "#34c46a", "#3a3a48"][i], accent: "#f2c230" };
+    fig(rear, toScaledCanvas(renderRider(rider, bike), { crop: rearCrop, scale: zoom }), kind);
+  });
+  const lean = section("Rear view (lean and actions, playing)");
+  const bike: Bike = { kind: "underbone", body: "#d8262f", accent: "#f4f1ea", exhaust: "racing" };
+  const wide: [number, number, number, number] = [0, 10, REAR_FRAME.width, REAR_FRAME.height - 10];
+  const sway = [0, 7, 14, 21, 14, 7, 0, -7, -14, -21, -14, -7].map((roll) => riderPose({ roll, steer: roll / 21 }));
+  const reels: [string, RiderPose[], number][] = [
+    ["lean", sway, 8],
+    ...Object.entries(RIDER_ANIMS).map(([name, a]): [string, RiderPose[], number] => [name, riderFramePoses(a), a.fps]),
+    ["kick left", riderFramePoses(RIDER_ANIMS.kick).map(mirrorRider), RIDER_ANIMS.kick.fps],
+  ];
+  for (const [name, poses, fps] of reels) {
+    const frames = poses.map((p) => toScaledCanvas(renderRider(rider, bike, p, { item: name === "swing" ? item : null }), { crop: wide, scale: zoom }));
+    const holder = document.createElement("div");
+    holder.append(frames[0]);
+    let i = 0;
+    timers.push(window.setInterval(() => holder.replaceChildren(frames[(i = (i + 1) % frames.length)]), 1000 / fps));
+    fig(lean, holder, `${name} (${frames.length}f)`);
+  }
+
+  const foot = section("On foot, front and back (playing)");
+  for (const facing of ["front", "back"] as const) {
+    for (const who of [rider, { ...rider, helmet: "none" as const, shorts: true }]) {
+      const frames = runCycle().map((p) => toScaledCanvas(renderWalker(who, p, { facing }), { crop, scale: zoom }));
+      const holder = document.createElement("div");
+      holder.append(frames[0]);
+      let i = 0;
+      timers.push(window.setInterval(() => holder.replaceChildren(frames[(i = (i + 1) % frames.length)]), 1000 / 14));
+      fig(foot, holder, `run, ${facing}${who.helmet === "none" ? ", no helmet" : ""}`);
+    }
+  }
+  fig(foot, toScaledCanvas(renderWalker(rider, { ...STAND_POSE, raise: { side: 1, angle: 170 } }, { item }), { crop, scale: zoom }), "raised arm + item");
 
   $("png").onclick = () => {
     const sheet = toSheet(renderAnim(cast[0], ANIMS.idle, { item }));

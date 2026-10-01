@@ -35,6 +35,7 @@ export function lambert(nx: number, ny: number): number {
 }
 
 export type Painter = (info: {
+  /** Unscaled pixel position; whole numbers at scale 1, fractional above it. */
   x: number;
   y: number;
   /** 0..1 along the segment. */
@@ -47,17 +48,27 @@ export type Painter = (info: {
 /**
  * Indexed pixel buffer. Parts are painted with a depth; nearer paint wins.
  * resolve() then adds occlusion creases, selective outlines and cleanup.
+ *
+ * `scale` renders the same drawing with more pixels: every coordinate and radius stays in
+ * unscaled units and the buffer (`w` × `h`, already scaled) holds `scale` pixels per unit.
+ * Shapes gain real detail; outlines and creases stay one pixel wide.
  */
 export class PixelBuffer {
   readonly mat: Uint8Array;
   readonly tone: Int8Array;
   readonly depth: Float32Array;
   readonly part: Uint8Array;
+  /** Bounds of everything plotted so far: resolve() only walks this box. */
+  private x0 = Infinity;
+  private y0 = Infinity;
+  private x1 = -1;
+  private y1 = -1;
 
   constructor(
     readonly w: number,
     readonly h: number,
     readonly materials: Material[],
+    readonly scale = 1,
   ) {
     const n = w * h;
     this.mat = new Uint8Array(n);
@@ -66,7 +77,8 @@ export class PixelBuffer {
     this.part = new Uint8Array(n);
   }
 
-  put(
+  /** One buffer pixel. */
+  private plot(
     x: number,
     y: number,
     mat: number,
@@ -81,9 +93,32 @@ export class PixelBuffer {
     this.tone[i] = Math.max(0, Math.min(4, tone));
     this.depth[i] = depth;
     this.part[i] = part;
+    if (x < this.x0) this.x0 = x;
+    if (x > this.x1) this.x1 = x;
+    if (y < this.y0) this.y0 = y;
+    if (y > this.y1) this.y1 = y;
   }
 
+  /** One unscaled pixel: a `scale` × `scale` block of the buffer. */
+  put(
+    x: number,
+    y: number,
+    mat: number,
+    tone: number,
+    depth: number,
+    part: number,
+  ) {
+    const k = this.scale;
+    if (k === 1) return this.plot(x, y, mat, tone, depth, part);
+    for (let v = Math.floor(y * k); v < Math.floor((y + 1) * k); v++)
+      for (let u = Math.floor(x * k); u < Math.floor((x + 1) * k); u++)
+        this.plot(u, v, mat, tone, depth, part);
+  }
+
+  /** Material at an unscaled pixel, or -1. */
   matAt(x: number, y: number): number {
+    x = Math.floor(x * this.scale);
+    y = Math.floor(y * this.scale);
     if (x < 0 || y < 0 || x >= this.w || y >= this.h) return -1;
     return this.mat[y * this.w + x] - 1;
   }
@@ -99,18 +134,20 @@ export class PixelBuffer {
     paint: Painter,
   ) {
     const r = Math.max(ra, rb);
-    const x0 = Math.floor(Math.min(a.x, b.x) - r - 1);
-    const x1 = Math.ceil(Math.max(a.x, b.x) + r + 1);
-    const y0 = Math.floor(Math.min(a.y, b.y) - r - 1);
-    const y1 = Math.ceil(Math.max(a.y, b.y) + r + 1);
+    const k = this.scale;
+    const x0 = Math.floor((Math.min(a.x, b.x) - r - 1) * k);
+    const x1 = Math.ceil((Math.max(a.x, b.x) + r + 1) * k);
+    const y0 = Math.floor((Math.min(a.y, b.y) - r - 1) * k);
+    const y1 = Math.ceil((Math.max(a.y, b.y) + r + 1) * k);
     const dx = b.x - a.x;
     const dy = b.y - a.y;
     const len2 = dx * dx + dy * dy || 1e-6;
     const len = Math.sqrt(len2);
     for (let y = y0; y <= y1; y++) {
       for (let x = x0; x <= x1; x++) {
-        const px = x + 0.5;
-        const py = y + 0.5;
+        // Pixel centre in unscaled units.
+        const px = (x + 0.5) / k;
+        const py = (y + 0.5) / k;
         const t = Math.max(
           0,
           Math.min(1, ((px - a.x) * dx + (py - a.y) * dy) / len2),
@@ -126,14 +163,58 @@ export class PixelBuffer {
         const ny = oy / rr;
         // Signed side: which side of the a->b line the pixel is on.
         const side = (dx * oy - dy * ox) / len;
-        const res = paint({ x, y, t, s: side / rr, shade: lambert(nx, ny) });
-        if (res) this.put(x, y, res.mat, res.tone, depth, part);
+        const res = paint({
+          x: px - 0.5,
+          y: py - 0.5,
+          t,
+          s: side / rr,
+          shade: lambert(nx, ny),
+        });
+        if (res) this.plot(x, y, res.mat, res.tone, depth, part);
       }
     }
   }
 
   disc(c: Vec, r: number, depth: number, part: number, paint: Painter) {
     this.capsule(c, c, r, r, depth, part, paint);
+  }
+
+  /**
+   * Flat-ended oriented rectangle from a to b, `half` px either side of the axis
+   * (panels, plates, bodywork). Shaded as a gently curved panel.
+   */
+  box(a: Vec, b: Vec, half: number, depth: number, part: number, paint: Painter) {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len = Math.hypot(dx, dy) || 1e-6;
+    const ux = dx / len;
+    const uy = dy / len;
+    const k = this.scale;
+    const x0 = Math.floor((Math.min(a.x, b.x) - half - 1) * k);
+    const x1 = Math.ceil((Math.max(a.x, b.x) + half + 1) * k);
+    const y0 = Math.floor((Math.min(a.y, b.y) - half - 1) * k);
+    const y1 = Math.ceil((Math.max(a.y, b.y) + half + 1) * k);
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        const px = (x + 0.5) / k;
+        const py = (y + 0.5) / k;
+        const ox = px - a.x;
+        const oy = py - a.y;
+        const along = ox * ux + oy * uy;
+        // Same sign convention as capsule(): which side of the a->b line.
+        const side = ux * oy - uy * ox;
+        if (along < 0 || along > len || Math.abs(side) > half) continue;
+        const s = side / half;
+        const res = paint({
+          x: px - 0.5,
+          y: py - 0.5,
+          t: along / len,
+          s,
+          shade: lambert(-uy * s * 0.5, ux * s * 0.5),
+        });
+        if (res) this.plot(x, y, res.mat, res.tone, depth, part);
+      }
+    }
   }
 
   line(a: Vec, b: Vec, mat: number, tone: number, depth: number, part: number) {
@@ -164,9 +245,15 @@ export class PixelBuffer {
     ];
 
     // 1. A nearer part casts a 1px crease onto the part behind it.
+    // Painted pixels plus the one-pixel rim the outline can land on.
+    const xa = Math.max(0, this.x0 - 1);
+    const xb = Math.min(w - 1, this.x1 + 1);
+    const ya = Math.max(0, this.y0 - 1);
+    const yb = Math.min(h - 1, this.y1 + 1);
+
     const crease = new Uint8Array(w * h);
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < w; x++) {
+    for (let y = ya; y <= yb; y++) {
+      for (let x = xa; x <= xb; x++) {
         const i = idx(x, y);
         if (!mat[i]) continue;
         for (const [ox, oy] of N4) {
@@ -186,8 +273,8 @@ export class PixelBuffer {
 
     // 2. Remove single-pixel tone speckles inside a material.
     const cleaned = Int8Array.from(tone);
-    for (let y = 1; y < h - 1; y++) {
-      for (let x = 1; x < w - 1; x++) {
+    for (let y = Math.max(1, ya); y <= Math.min(h - 2, yb); y++) {
+      for (let x = Math.max(1, xa); x <= Math.min(w - 2, xb); x++) {
         const i = idx(x, y);
         if (!mat[i] || crease[i]) continue;
         const counts = [0, 0, 0, 0, 0];
@@ -207,8 +294,8 @@ export class PixelBuffer {
 
     // 3. Colour + selective outline (lighter on the lit top/front edges).
     const out = new Uint8ClampedArray(w * h * 4);
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < w; x++) {
+    for (let y = ya; y <= yb; y++) {
+      for (let x = xa; x <= xb; x++) {
         const i = idx(x, y);
         let rgb: RGB | null = null;
         if (mat[i]) {

@@ -4,8 +4,8 @@ export type Stature = "short" | "average" | "tall";
 export type HairStyle = "buzz" | "crop" | "spiky" | "bob" | "ponytail" | "bun" | "curly";
 export type EyeStyle = "normal" | "narrow" | "round";
 export type FacialHair = "none" | "stubble" | "mustache";
-/** `long`: knee-length basketball shorts. */
-export type BottomStyle = "shorts" | "skort" | "long";
+/** `long`: knee-length basketball shorts. `trousers`: full-length, down to the shoe. */
+export type BottomStyle = "shorts" | "skort" | "long" | "trousers";
 
 /** Clothing colours (hex). */
 export interface Outfit {

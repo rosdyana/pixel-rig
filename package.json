@@ -1,6 +1,6 @@
 {
   "name": "@taipeistudio/pixel-rig",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Procedural, animated pixel-art characters from a pose rig. Deterministic, no image assets.",
   "keywords": [
     "pixel-art",
@@ -13,7 +13,9 @@
     "pixijs",
     "typescript",
     "basketball",
-    "football"
+    "football",
+    "motorcycle",
+    "pseudo-3d"
   ],
   "author": {
     "name": "Rosdyana Kusuma",

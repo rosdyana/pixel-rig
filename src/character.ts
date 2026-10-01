@@ -31,9 +31,14 @@ export interface Frame {
 export interface RenderOptions {
   item?: HeldItem | null;
   frame?: FrameSpec;
+  /**
+   * Pixels per rig unit (default 1). 2 draws the same character with four times the
+   * pixels: the returned frame, origin and anchors are all in those finer pixels.
+   */
+  scale?: number;
 }
 
-interface Dims {
+export interface Dims {
   thigh: number;
   shin: number;
   upper: number;
@@ -51,7 +56,7 @@ interface Dims {
   rChest: number;
 }
 
-function dims(ap: Look): Dims {
+export function dims(ap: Look): Dims {
   const f = ap.gender === "female";
   const hs = ap.height ?? { short: 0.93, average: 1, tall: 1.07 }[ap.stature];
   const bw = { slim: -0.35, athletic: 0, stocky: 0.55 }[ap.build];
@@ -155,7 +160,8 @@ export function renderPose(look: Look, pose: Pose, opts: RenderOptions = {}): Fr
   rig = translate(rig, f.originX - 4 + pose.dx, f.groundY - pose.air - soleY);
 
   const materials = [...bodyMaterials(look), ...(item?.materials(look) ?? [])];
-  const buf = new PixelBuffer(f.width, f.height, materials);
+  const k = opts.scale ?? 1;
+  const buf = new PixelBuffer(f.width * k, f.height * k, materials, k);
   // Lefties hold the item in the far hand.
   const itemNear = !look.lefty;
   const armDepth = itemNear ? 6 : 1;
@@ -179,11 +185,11 @@ export function renderPose(look: Look, pose: Pose, opts: RenderOptions = {}): Fr
   drawArm(buf, d, rig.shoulder, rig.arm, armDepth, armDepth === 1 ? -1 : 0, look, true);
   return {
     pixels: buf.resolve(),
-    width: f.width,
-    height: f.height,
-    origin: { x: f.originX, y: f.groundY },
-    item: anchor,
-    hand: rig.arm.hand,
+    width: f.width * k,
+    height: f.height * k,
+    origin: { x: f.originX * k, y: f.groundY * k },
+    item: anchor && { x: anchor.x * k, y: anchor.y * k },
+    hand: { x: rig.arm.hand.x * k, y: rig.arm.hand.y * k },
   };
 }
 
@@ -191,6 +197,22 @@ function drawLeg(buf: PixelBuffer, d: Dims, leg: Rig["legN"], depth: number, par
   const bottom = ap.outfit.bottomStyle ?? (ap.gender === "female" ? "skort" : "shorts");
   const skort = bottom === "skort";
   const long = bottom === "long";
+  if (bottom === "trousers") {
+    // Full-length legs: no bare skin or sock, a darker hem over the shoe.
+    buf.capsule(leg.hip, leg.knee, d.rThigh[0] + 0.3, d.rThigh[1] + 0.4, depth, part, ({ shade }) => ({
+      mat: M.bottom,
+      tone: quantize(shade) + adj,
+    }));
+    buf.capsule(leg.knee, leg.ankle, d.rShin[0] + 0.4, d.rShin[1] + 0.5, depth, part, ({ shade, t }) => ({
+      mat: M.bottom,
+      tone: quantize(shade) + adj - (t > 0.9 ? 1 : 0),
+    }));
+    buf.capsule(leg.heel, leg.toe, SHOE_R, SHOE_R - 0.15, depth + 0.1, part, ({ shade, s, t }) => {
+      if (s > 0.42) return { mat: M.sole, tone: 2 + adj };
+      return { mat: M.shoe, tone: quantize(shade) + adj - (t < 0.12 ? 1 : 0) };
+    });
+    return;
+  }
   // Ankle socks, crew socks to mid-calf, or knee-high football socks reaching just below the knee.
   const bare = !!ap.outfit.barefoot;
   const height = ap.outfit.sockHeight ?? (ap.outfit.highSocks ? "knee" : "ankle");
@@ -238,7 +260,7 @@ const mod2 = (n: number) => ((Math.floor(n) % 2) + 2) % 2;
  * Is this torso pixel part of the shirt pattern? `along` is px up the torso axis from the
  * waist, `across` px towards the front (+) from the centre line, `len` the waist→chest span.
  */
-function onPattern(p: ShirtPattern, along: number, across: number, len: number): boolean {
+export function onPattern(p: ShirtPattern, along: number, across: number, len: number): boolean {
   switch (p) {
     case "stripes":
       return mod2((across + 1) / 2) === 1;

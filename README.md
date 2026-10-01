@@ -29,6 +29,9 @@ always produces the same pixels.
 - [Football kits](#football-kits)
 - [Custom poses and animations](#custom-poses-and-animations)
 - [Custom held items](#custom-held-items)
+- [Rear view: bikes and riders](#rear-view-bikes-and-riders)
+- [On foot, front and back](#on-foot-front-and-back)
+- [Finer pixels](#finer-pixels)
 - [Props and low-level drawing](#props-and-low-level-drawing)
 - [Frame size](#frame-size)
 - [Versioning policy](#versioning-policy)
@@ -38,10 +41,13 @@ always produces the same pixels.
 ## Features
 
 - **Consistent shading**: 5-tone hue-shifted colour ramps, lambert shading, crease shadows and selective outlines
-- **Configurable humanoid rig**: gender, build, stature, skin, 7 hair styles, eyes, facial hair, handedness, headband and outfit colours (top, trim, bottom, shoes, accent, shorts/skort)
+- **Configurable humanoid rig**: gender, build, stature, skin, 7 hair styles, eyes, facial hair, handedness, headband and outfit colours (top, trim, bottom, shoes, accent, shorts/skort/trousers)
 - **Football kits**: shirt patterns (stripes, hoops, halves, sash), sock colours, knee-high socks, long sleeves and goalkeeper gloves
 - **Basketball kits**: sleeveless jerseys, knee-length shorts, crew socks, a shooting sleeve, and a free `height` scale for very tall players
 - **Pose system**: pose blending and animations, with a generic set included (idle, run, jump, lunge, dive, cheer, slump)
+- **Rear-view rig for 2.5D games**: a rider on a motorbike seen from behind (five bike kinds, lean, steering, punches, kicks, weapon swings, helmets), in the same style and scale as the side view
+- **On-foot front and back views** of the same riders, with a run cycle
+- **Finer pixels on request**: `scale: 2` renders any rig with four times the detail
 - **Pluggable held items**: `racket()` and `sword()` included, or write your own
 - **Props**: pre-rendered rotations for small sprites such as projectiles, balls and shuttlecocks
 - **Deterministic and save-friendly**: looks are plain JSON; the same input always yields the same pixels
@@ -186,11 +192,73 @@ export const torch: HeldItem = {
 };
 ```
 
+## Rear view: bikes and riders
+
+For pseudo-3D racers and other 2.5D games, `renderRider` draws a bike from behind with the
+same materials, shading and scale as the side-view rig, so a character keeps its look when
+it gets off the bike.
+
+```ts
+import { DEFAULT_LOOK, mirrorRider, renderRider, riderPose, RIDER_POSES, type Bike, type Rider } from "@taipeistudio/pixel-rig";
+
+const rider: Rider = {
+  look: { ...DEFAULT_LOOK, outfit: { ...DEFAULT_LOOK.outfit, top: "#2b2d42", sleeves: "long" } },
+  helmet: "full", // or "half", "none"
+  helmetColor: "#d8262f",
+  patch: true, // emblem on the back in the outfit accent colour
+};
+const bike: Bike = { kind: "underbone", body: "#d8262f", accent: "#f4f1ea", exhaust: "racing" };
+
+renderRider(rider, bike); // riding straight
+renderRider(rider, bike, riderPose({ roll: 14, steer: 0.7 })); // leaning into a right-hander
+renderRider(rider, bike, RIDER_POSES.kick); // kick to the right
+renderRider(rider, bike, mirrorRider(RIDER_POSES.kick)); // and to the left
+renderRider(null, bike, riderPose({ roll: 85, air: 6 })); // riderless, lying on its side
+```
+
+- **Bikes**: `underbone`, `scooter`, `standard`, `sport`, `cruiser` (`BIKE_KINDS`), with body
+  and accent colours, optional seat and plate colours, a `racing` exhaust and a `cargo` box.
+- **Poses**: `roll` (degrees, about the tyre contact point), `tuck`, `shift`, `head`,
+  `steer`, `air`, `brake`, and four limbs. A limb with `hold: 1` stays on its grip or peg;
+  at `hold: 0` it follows its angles (0 = down, 90 = out to its own side, 180 = up).
+  `RIDER_POSES` has ride, tuck, brake, punch, kick, swing, hit, footDown and cheer, all to
+  the right; `mirrorRider` flips any pose. `blendRider`, `riderAnim`, `riderFramePoses`,
+  `renderRiderAnim` and `RIDER_ANIMS` mirror the side rig's animation helpers.
+- **Held items** work unchanged: pass `{ item }` and set `pose.item` / `pose.itemSide`.
+- **Frame**: `REAR_FRAME` is 128 × 88 px with the rear tyre's contact point at (64, 84).
+- Bikes add material slots after the body's (`RM`, `REAR_SLOTS`); held items follow them.
+
+## On foot, front and back
+
+`renderWalker` draws the same `Rider` off the bike, seen from the front or from behind:
+for a rider running back to a crashed bike, or anyone walking toward or away from the
+camera in a 2.5D scene.
+
+```ts
+import { renderWalker, runCycle, STAND_POSE } from "@taipeistudio/pixel-rig";
+
+renderWalker(rider, STAND_POSE, { facing: "front" }); // standing, looking at the camera
+runCycle().map((pose) => renderWalker(rider, pose, { facing: "back" })); // 8-frame run, from behind
+```
+
+A `WalkPose` is each leg's lift (0 planted to 1 knee high), each arm's swing (-1 back to 1
+forward) and a `bob`. `raise: { side, angle }` holds one arm straight instead (waving a
+flag, pointing); pass `{ item }` to put a held item in that hand. It uses the default frame, with the origin on the ground between the
+feet.
+
+## Finer pixels
+
+Every renderer takes `scale` (default 1): the same drawing with `scale` pixels per rig unit.
+`{ scale: 2 }` returns a frame twice as wide and tall with four times the detail; outlines
+and creases stay one pixel wide. The frame's size, origin and anchors are in the finer
+pixels. `PixelBuffer` takes the same factor as its fourth argument, with coordinates and
+radii left in unscaled units, so custom props and items scale without changes.
+
 ## Props and low-level drawing
 
 - **Props**: `renderRotations(size, count, materials, draw)` pre-renders a small sprite at
   `count` headings; `rotationIndex(radians, count)` selects the right one each frame.
-- **Low level**: `PixelBuffer` (`capsule`, `disc`, `line`, `put`; depth, parts, and
+- **Low level**: `PixelBuffer` (`capsule`, `disc`, `box`, `line`, `put`; depth, parts, and
   `resolve()` for creases, cleanup and outlines) and `ramp()` are exported for drawing
   anything else in the same style.
 
@@ -218,7 +286,7 @@ cd pixel-rig
 npm install
 
 npm run dev     # preview app: cast, all animations, item switcher, PNG sheet export
-npm test        # feet planted, no frame clipping, determinism, pixel-hash regression, props
+npm test        # feet planted, no frame clipping, determinism, pixel-hash regression, props, rear rig
 npm run check   # typecheck + tests
 npm run build   # dist/ (ESM + .d.ts)
 ```
